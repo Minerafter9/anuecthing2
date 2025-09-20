@@ -74,7 +74,4 @@ export default function CampaignCalendarPage() {
     </div>
   );
 }
-```
-
----
 
