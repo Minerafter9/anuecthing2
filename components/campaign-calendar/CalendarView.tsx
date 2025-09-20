@@ -20,7 +20,7 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import type { Post } from './types';
 
 interface CalendarViewProps {
-  posts: Post[];
+  posts?: Post[]; // <-- allow undefined while data loads
   onPostMove: (postId: string, newDate: Date) => void;
   onCreatePost: (date: Date) => void;
   onEditPost?: (post: Post) => void;
@@ -32,9 +32,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
   const [{ isDragging }, dragRef] = useDrag(() => ({
     type: 'post',
     item: (): DragItem => ({ id: post.id, type: 'post' }),
-    collect: (monitor: DragSourceMonitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
+    collect: (monitor: DragSourceMonitor) => ({ isDragging: monitor.isDragging() }),
   }), [post.id]);
 
   return (
@@ -48,10 +46,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
       <div className="font-medium text-gray-800 truncate">{post.title}</div>
       <div className="flex flex-wrap gap-1 mt-1">
         {post.platforms.map((platform) => (
-          <span
-            key={platform}
-            className="px-1 py-0.5 rounded text-xs bg-blue-100 text-blue-800"
-          >
+          <span key={platform} className="px-1 py-0.5 rounded text-xs bg-blue-100 text-blue-800">
             {platform}
           </span>
         ))}
@@ -73,15 +68,15 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
 
 const CalendarDay: React.FC<{
   date: Date;
-  posts: Post[];
+  posts?: Post[]; // <-- allow undefined
   isCurrentMonth: boolean;
   onPostMove: (postId: string, newDate: Date) => void;
   onCreatePost: (date: Date) => void;
   onEditPost?: (post: Post) => void;
-}> = ({ date, posts, isCurrentMonth, onPostMove, onCreatePost, onEditPost }) => {
+}> = ({ date, posts = [], isCurrentMonth, onPostMove, onCreatePost, onEditPost }) => {
   const [{ isOver }, dropRef] = useDrop(() => ({
     accept: 'post',
-    drop: (item: DragItem, _monitor: DropTargetMonitor) => {
+    drop: (item: DragItem) => {
       if (!item?.id) return;
       onPostMove(item.id, date);
     },
@@ -90,9 +85,12 @@ const CalendarDay: React.FC<{
     }),
   }), [date, onPostMove]);
 
-  const dayPosts = posts.filter((post) =>
-    isSameDay(new Date(post.scheduledDate as unknown as Date), date)
-  );
+  // parse only when scheduledDate exists
+  const dayPosts = posts.filter((post) => {
+    if (!post?.scheduledDate) return false;
+    const d = new Date(post.scheduledDate as unknown as Date);
+    return !Number.isNaN(d.getTime()) && isSameDay(d, date);
+  });
 
   const today = startOfDay(new Date());
   const isPast = isBefore(startOfDay(date), today);
@@ -101,11 +99,7 @@ const CalendarDay: React.FC<{
     <div
       ref={dropRef}
       className={`min-h-[120px] p-2 border border-gray-200 ${
-        !isCurrentMonth
-          ? 'bg-gray-50 text-gray-400'
-          : isPast
-          ? 'bg-gray-100 text-gray-400'
-          : 'bg-white'
+        !isCurrentMonth ? 'bg-gray-50 text-gray-400' : isPast ? 'bg-gray-100 text-gray-400' : 'bg-white'
       } ${isOver ? 'bg-blue-50' : ''}`}
     >
       <div className="flex justify-between items-start mb-2">
@@ -148,6 +142,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
 
+  // ensure children always get an array
+  const safePosts = Array.isArray(posts) ? posts : [];
+
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const calendarDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
@@ -160,9 +157,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     <DndProvider backend={HTML5Backend}>
       <div className="bg-white rounded-lg shadow-lg p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">
-            {format(currentDate, 'MMMM yyyy')}
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-800">{format(currentDate, 'MMMM yyyy')}</h2>
           <div className="flex gap-2">
             <button
               onClick={() => navigateMonth('prev')}
@@ -185,10 +180,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
         <div className="grid grid-cols-7 gap-0 border border-gray-200 rounded-lg overflow-hidden">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <div
-              key={day}
-              className="bg-gray-50 p-3 text-center font-medium text-gray-700 border-b border-gray-200"
-            >
+            <div key={day} className="bg-gray-50 p-3 text-center font-medium text-gray-700 border-b border-gray-200">
               {day}
             </div>
           ))}
@@ -197,7 +189,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             <CalendarDay
               key={date.toISOString()}
               date={date}
-              posts={posts}
+              posts={safePosts} // <-- always an array
               isCurrentMonth={isSameMonth(date, currentDate)}
               onPostMove={onPostMove}
               onCreatePost={onCreatePost}
