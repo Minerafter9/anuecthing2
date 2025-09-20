@@ -1,63 +1,67 @@
-'use client';
+Below are two drop‑in files you can copy/paste directly into your repo. They keep your existing layout, add image preview, title, and schedule, **and** make the exit (✕), Escape key, and backdrop click all close the modal reliably.
 
-import React, { useCallback, useEffect, useState } from 'react';
-import { X, Image as ImageIcon, Eye, EyeOff, Loader2 } from 'lucide-react';
+---
 
-// Paste-ready: if you already define Post elsewhere, ensure it includes `title` and `scheduledAt`.
+## 1) `components/campaign-calendar/PostEditor.tsx`
+
+```tsx
+// FILE: components/campaign-calendar/PostEditor.tsx
+"use client";
+
+import React, { useCallback, useEffect, useState } from "react";
+import { X, Image as ImageIcon, Eye, EyeOff, Loader2 } from "lucide-react";
+
 export type Post = {
   id?: string;
-  title: string;        // NEW
+  title: string;
   text: string;
   platforms: string[];
   mediaUrl?: string;
-  scheduledAt?: string; // NEW (e.g., '2025-09-21T13:30')
+  scheduledAt?: string; // e.g. "2025-09-21T13:30"
 };
 
 export type PostEditorProps = {
   post?: Post;
   onSave: (post: Post) => void;
-  onClose: () => void; // Will be called by ✕ button, Escape key, and clicking backdrop
+  onClose: () => void; // ✕ / Esc / backdrop call this
 };
 
-// If your project already exports PLATFORMS elsewhere, remove this and keep your import.
+// If you already have PLATFORMS elsewhere, remove this and keep your original import.
 const PLATFORMS: { id: string; name: string }[] = [
-  { id: 'instagram', name: 'Instagram' },
-  { id: 'tiktok', name: 'TikTok' },
-  { id: 'facebook', name: 'Facebook' },
-  { id: 'linkedin', name: 'LinkedIn' },
+  { id: "instagram", name: "Instagram" },
+  { id: "tiktok", name: "TikTok" },
+  { id: "facebook", name: "Facebook" },
+  { id: "linkedin", name: "LinkedIn" },
 ];
 
-export const PostEditor: React.FC<PostEditorProps> = ({ post, onSave, onClose }) => {
+const PostEditor: React.FC<PostEditorProps> = ({ post, onSave, onClose }) => {
   const isEditing = Boolean(post?.id ?? post);
 
-  // --- State (keeps your existing layout/format) ---
-  const [title, setTitle] = useState<string>(post?.title ?? '');
-  const [text, setText] = useState<string>(post?.text ?? '');
+  const [title, setTitle] = useState(post?.title ?? "");
+  const [text, setText] = useState(post?.text ?? "");
   const [platforms, setPlatforms] = useState<string[]>(post?.platforms ?? []);
-  const [scheduledAt, setScheduledAt] = useState<string>(post?.scheduledAt ?? '');
+  const [scheduledAt, setScheduledAt] = useState(post?.scheduledAt ?? "");
 
-  // Image preview state
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaUrl, setMediaUrl] = useState<string | undefined>(post?.mediaUrl);
 
-  // UI state
-  const [showPreview, setShowPreview] = useState<boolean>(false);
-  const [saving, setSaving] = useState<boolean>(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  // Clean up object URLs
+  // Cleanup any blob URLs we created
   useEffect(() => {
     return () => {
-      if (mediaUrl && mediaUrl.startsWith('blob:')) URL.revokeObjectURL(mediaUrl);
+      if (mediaUrl && mediaUrl.startsWith("blob:")) URL.revokeObjectURL(mediaUrl);
     };
   }, [mediaUrl]);
 
-  // Allow closing with Escape key
+  // Esc key closes the modal
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
   const togglePlatform = useCallback((id: string) => {
@@ -70,7 +74,7 @@ export const PostEditor: React.FC<PostEditorProps> = ({ post, onSave, onClose })
     const nextUrl = URL.createObjectURL(file);
     setMediaFile(file);
     setMediaUrl((prev) => {
-      if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev);
+      if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev);
       return nextUrl;
     });
   }, []);
@@ -94,17 +98,26 @@ export const PostEditor: React.FC<PostEditorProps> = ({ post, onSave, onClose })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop (click to close) */}
+      {/* Backdrop — click anywhere outside the panel to close */}
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
-      {/* Panel */}
-      <div className="relative z-10 w-full max-w-5xl rounded-xl bg-white shadow-2xl">
+      {/* Panel — stop click bubbling so backdrop doesn't immediately close it */}
+      <div
+        className="relative z-10 w-full max-w-5xl rounded-xl bg-white shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b px-6 py-4">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold text-gray-900">{isEditing ? 'Edit Post' : 'Create a Post'}</h2>
-          </div>
-          <button onClick={onClose} className="p-2 text-gray-500 hover:text-gray-700" aria-label="Close editor">
+          <h2 className="text-lg font-semibold text-gray-900">
+            {isEditing ? "Edit Post" : "Create a Post"}
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-500 hover:text-gray-700"
+            aria-label="Close editor"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -136,7 +149,9 @@ export const PostEditor: React.FC<PostEditorProps> = ({ post, onSave, onClose })
                       type="button"
                       onClick={() => togglePlatform(pf.id)}
                       className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                        active ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                        active
+                          ? "border-blue-600 bg-blue-50 text-blue-700"
+                          : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                       }`}
                     >
                       {pf.name}
@@ -158,7 +173,7 @@ export const PostEditor: React.FC<PostEditorProps> = ({ post, onSave, onClose })
               />
             </div>
 
-            {/* Media picker & inline thumbnail */}
+            {/* Media */}
             <div className="mt-6">
               <label className="mb-2 block text-sm font-medium text-gray-700">Attach image</label>
               <div className="flex items-center gap-3">
@@ -190,16 +205,15 @@ export const PostEditor: React.FC<PostEditorProps> = ({ post, onSave, onClose })
 
             {/* Actions */}
             <div className="mt-8 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowPreview((v) => !v)}
-                  className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  {showPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  {showPreview ? 'Hide preview' : 'Show preview'}
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowPreview((v) => !v)}
+                className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                {showPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPreview ? "Hide preview" : "Show preview"}
+              </button>
+
               <button
                 type="button"
                 onClick={onSubmit}
@@ -207,12 +221,12 @@ export const PostEditor: React.FC<PostEditorProps> = ({ post, onSave, onClose })
                 className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
               >
                 {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isEditing ? 'Save changes' : 'Schedule / Save'}
+                {isEditing ? "Save changes" : "Schedule / Save"}
               </button>
             </div>
           </div>
 
-          {/* Preview panel */}
+          {/* Preview */}
           <div className="max-h-[75vh] min-h-[560px] overflow-y-auto bg-gray-50 p-6">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-medium text-gray-800">Preview</h3>
@@ -235,17 +249,15 @@ export const PostEditor: React.FC<PostEditorProps> = ({ post, onSave, onClose })
                   return (
                     <div key={platformId} className="rounded-lg bg-white p-4 shadow">
                       <div className="mb-1 text-sm font-semibold text-gray-800">{platform.name}</div>
-                      <div className="text-[13px] font-medium text-gray-900">{title || 'Untitled post'}</div>
-                      <p className="mt-1 whitespace-pre-wrap text-sm text-gray-800">{text || 'Your caption will appear here…'}</p>
+                      <div className="text-[13px] font-medium text-gray-900">{title || "Untitled post"}</div>
+                      <p className="mt-1 whitespace-pre-wrap text-sm text-gray-800">{text || "Your caption will appear here…"}</p>
                       {mediaUrl && (
                         <div className="mt-3 overflow-hidden rounded-lg">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={mediaUrl} alt="post media preview" className="max-h-80 w-full object-cover" />
                         </div>
                       )}
-                      {scheduledAt && (
-                        <div className="mt-3 text-xs text-gray-500">Scheduled: {scheduledAt}</div>
-                      )}
+                      {scheduledAt && <div className="mt-3 text-xs text-gray-500">Scheduled: {scheduledAt}</div>}
                     </div>
                   );
                 })}
@@ -259,40 +271,98 @@ export const PostEditor: React.FC<PostEditorProps> = ({ post, onSave, onClose })
 };
 
 export default PostEditor;
+```
 
-/* ----------------------------------------------------
-Parent integration example (page.tsx) to make the close button work.
-If you already have this, just ensure onClose toggles the state.
+---
 
+## 2) `app/campaign-calendar/page.tsx`
+
+```tsx
+// FILE: app/campaign-calendar/page.tsx
 "use client";
-import React, { useState } from 'react';
-import PostEditor, { type Post } from '@/components/campaign-calendar/PostEditor';
+
+import React, { useState, useCallback } from "react";
+import { CalendarView } from "@/components/campaign-calendar/CalendarView";
+import PostEditor, { type Post } from "@/components/campaign-calendar/PostEditor"; // default export
+import { ContentUploader } from "@/components/campaign-calendar/ContentUploader";
+import { Plus, Settings, BarChart3 } from "lucide-react";
 
 export default function CampaignCalendarPage() {
   const [showEditor, setShowEditor] = useState(false);
+  const [editingPost, setEditingPost] = useState<Post | undefined>(undefined);
 
-  const handleSave = (p: Post) => {
-    // TODO: Persist to backend
-    console.log('saved', p);
-    setShowEditor(false); // close after save if you want
-  };
+  const openCreate = useCallback(() => {
+    setEditingPost(undefined);
+    setShowEditor(true);
+  }, []);
+
+  const openEdit = useCallback((p: Post) => {
+    setEditingPost(p);
+    setShowEditor(true);
+  }, []);
+
+  const closeEditor = useCallback(() => setShowEditor(false), []);
+
+  const handleSave = useCallback((p: Post) => {
+    // TODO: persist `p` to your backend or local store
+    console.log("Saving post:", p);
+    setShowEditor(false); // auto-close after save (optional)
+  }, []);
 
   return (
-    <div className="p-6">
-      <button
-        className="rounded-md bg-blue-600 px-4 py-2 text-white"
-        onClick={() => setShowEditor(true)}
-      >
-        Create a Post
-      </button>
+    <div className="min-h-screen bg-white">
+      {/* Top bar */}
+      <div className="flex items-center justify-between border-b px-6 py-4">
+        <h1 className="text-lg font-semibold text-gray-900">Campaign Calendar</h1>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={openCreate}
+            className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4" />
+            Create a Post
+          </button>
+          <button className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+            <Settings className="mr-2 inline-block h-4 w-4" />
+            Settings
+          </button>
+          <button className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+            <BarChart3 className="mr-2 inline-block h-4 w-4" />
+            Insights
+          </button>
+        </div>
+      </div>
 
+      {/* Main area */}
+      <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-4">
+        <div className="lg:col-span-3">
+          <CalendarView
+            // If your CalendarView can open the editor, pass these:
+            // onCreateSlot={openCreate}
+            // onEditPost={openEdit}
+          />
+        </div>
+        <div className="lg:col-span-1 space-y-6">
+          <ContentUploader />
+        </div>
+      </div>
+
+      {/* Overlay editor */}
       {showEditor && (
-        <PostEditor
-          onSave={handleSave}
-          onClose={() => setShowEditor(false)} // ✕ button, ESC, and backdrop will call this
-        />
+        <PostEditor post={editingPost} onSave={handleSave} onClose={closeEditor} />
       )}
     </div>
   );
 }
------------------------------------------------------ */
+```
+
+---
+
+### Final checklist
+
+* Both files start with `"use client"`.
+* `PostEditor` is imported **as a default export** (no curly braces).
+* The panel has `onClick={(e) => e.stopPropagation()}` so inner clicks don’t close it.
+* The backdrop and ✕ button call `onClose`, and the parent sets `showEditor` to `false`.
+
+Paste these two files in those exact paths and run `npm run dev`. The ✕, Escape key, and backdrop click will close the Create‑a‑Post modal, with title/image/schedule preserved.
