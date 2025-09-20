@@ -1,6 +1,3 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import NavBar from "@/components/navbar/NavBar"; // or relative path if you don't use @ alias
 
@@ -27,6 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <NavBar />
           {/* add top padding equal to navbar height so content is not overlapped */}
